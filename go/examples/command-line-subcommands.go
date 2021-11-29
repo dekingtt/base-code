@@ -28,7 +28,7 @@ func main() {
 		fmt.Println("    tail", fooCmnd.Args())
 	case "bar":
 		barCmd.Parse(os.Args[2:])
-		fmt.Println("subcommand 'bar")
+		fmt.Println("subcommand 'bar'")
 		fmt.Println("    level", *barlevel)
 		fmt.Println("    tail", barCmd.Args())
 	default:
