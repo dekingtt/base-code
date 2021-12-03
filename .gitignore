@@ -36,3 +36,6 @@
 
 __pycache__
 *.csv
+.pytest_cache
+*.db 
+*.xlsx

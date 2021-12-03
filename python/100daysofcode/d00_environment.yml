@@ -1,0 +1,21 @@
+name: 100days
+channels:
+  - defaults
+dependencies:
+  - cython
+  - feedparser
+  - ipykernel
+  - jupyter
+  - matplotlib
+  - numpy
+  - pillow
+  - plotly
+  - pytest
+  - pytest-cov
+  - python=3.6.6
+  - requests
+  - selenium
+  - pip:
+    - tweepy
+    - wordcloud
+    - PyGithub
