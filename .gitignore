@@ -39,3 +39,6 @@ __pycache__
 .pytest_cache
 *.db 
 *.xlsx
+
+*.png
+*.jpg
