@@ -1,0 +1,35 @@
+package main
+
+import (
+	"fmt"
+	"net"
+	"time"
+)
+
+func main() {
+	fmt.Println("Client Test ... start")
+	time.Sleep(3 * time.Second)
+
+	conn, err := net.Dial("tcp", "127.0.0.1:7777")
+	if err != nil {
+		fmt.Println("Failed to connect to server ... ", err)
+		return
+	}
+
+	for {
+		_, err = conn.Write([]byte("Hello zinx"))
+		if err != nil {
+			fmt.Println("Failed to write, ", err)
+			return
+		}
+		buf := make([]byte, 512)
+		cnt, err := conn.Read(buf)
+		if err != nil {
+			fmt.Println("Failed to read...", err)
+			return
+		}
+		fmt.Printf("server call back : %s, cnt = %d\n", buf, cnt)
+		time.Sleep(1 * time.Second)
+	}
+
+}
