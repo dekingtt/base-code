@@ -34,7 +34,7 @@ func main() {
 		// fmt.Printf("server call back : %s, cnt = %d\n", buf, cnt)
 		// time.Sleep(1 * time.Second)
 		dp := znet.NewDataPack()
-		msg, _ := dp.Pack(znet.NewMsgPackage(0, []byte("Zinx v0.6 Client0 Test Message")))
+		msg, _ := dp.Pack(znet.NewMsgPackage(1, []byte("Zinx v0.6 Client1 Test Message")))
 		_, err = conn.Write(msg)
 		if err != nil {
 			fmt.Println("write error err", err)

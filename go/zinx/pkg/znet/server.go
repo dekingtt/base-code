@@ -18,8 +18,9 @@ type Server struct {
 	//服务绑定的IP地址
 	IP string
 	//服务绑定的端口
-	Port   int
-	Router ziface.IRouter
+	Port int
+	// Router ziface.IRouter
+	msgHandler ziface.IMsgHandle
 }
 
 //============== 定义当前客户端链接的handle api ===========
@@ -45,6 +46,8 @@ func (s *Server) Start() {
 
 	//开启一个go去做服务端Linster业务
 	go func() {
+		s.msgHandler.StartWorkerPool()
+
 		//1 获取一个TCP的Addr
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 		if err != nil {
@@ -77,7 +80,8 @@ func (s *Server) Start() {
 			//3.2 TODO Server.Start() 设置服务器最大连接控制,如果超过最大连接，那么则关闭此新的连接
 
 			//3.3 处理该新连接请求的 业务 方法， 此时应该有 handler 和 conn是绑定的
-			dealConn := NewConntion(conn, cid, s.Router)
+			fmt.Println("connection id is", cid)
+			dealConn := NewConntion(conn, cid, s.msgHandler)
 			cid++
 
 			//3.4 启动当前链接的处理业务
@@ -109,17 +113,17 @@ func (s *Server) Serve() {
 func NewServer(name string) ziface.IServer {
 	utils.GlobalObject.Reload()
 	s := &Server{
-		Name:      utils.GlobalObject.Name,
-		IPVersion: "tcp4",
-		IP:        utils.GlobalObject.Host,
-		Port:      utils.GlobalObject.TcpPort,
-		Router:    nil,
+		Name:       utils.GlobalObject.Name,
+		IPVersion:  "tcp4",
+		IP:         utils.GlobalObject.Host,
+		Port:       utils.GlobalObject.TcpPort,
+		msgHandler: NewMsgHandle(),
 	}
 
 	return s
 }
 
-func (s *Server) AddRouter(router ziface.IRouter) {
-	s.Router = router
+func (s *Server) AddRouter(msgId uint32, router ziface.IRouter) {
+	s.msgHandler.AddRouter(msgId, router)
 	fmt.Println("Add Router success! ")
 }
