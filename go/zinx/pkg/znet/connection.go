@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"zinx/pkg/utils"
 	"zinx/pkg/ziface"
 )
@@ -31,6 +32,9 @@ type Connection struct {
 	msgChan chan []byte
 
 	msgBuffChan chan []byte
+
+	property     map[string]interface{}
+	propertyLock sync.RWMutex
 }
 
 //创建连接的方法
@@ -44,6 +48,7 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		ExitBuffChan: make(chan bool, 1),
 		msgChan:      make(chan []byte),
 		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
+		property:     map[string]interface{}{},
 	}
 
 	c.TcpServer.GetConnMgr().Add(c)
@@ -244,4 +249,27 @@ func (c *Connection) SendBuffMsg(msgId uint32, data []byte) error {
 	}
 	c.msgBuffChan <- msg
 	return nil
+}
+
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+	c.property[key] = value
+}
+
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyLock.RLock()
+	defer c.propertyLock.RUnlock()
+
+	if value, ok := c.property[key]; ok {
+		return value, nil
+	} else {
+		return nil, errors.New("no property found")
+	}
+}
+
+func (c *Connection) RemoveProperty(key string) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+	delete(c.property, key)
 }
