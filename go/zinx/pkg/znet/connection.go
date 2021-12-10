@@ -10,6 +10,7 @@ import (
 )
 
 type Connection struct {
+	TcpServer ziface.IServer
 	//当前连接的socket TCP套接字
 	Conn *net.TCPConn
 	//当前连接的ID 也可以称作为SessionID，ID全局唯一
@@ -28,19 +29,24 @@ type Connection struct {
 	ExitBuffChan chan bool
 
 	msgChan chan []byte
+
+	msgBuffChan chan []byte
 }
 
 //创建连接的方法
-func NewConntion(conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
+func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
 	c := &Connection{
+		TcpServer:    server,
 		Conn:         conn,
 		ConnID:       connID,
 		isClosed:     false,
 		MsgHandler:   msgHandler,
 		ExitBuffChan: make(chan bool, 1),
 		msgChan:      make(chan []byte),
+		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 	}
 
+	c.TcpServer.GetConnMgr().Add(c)
 	return c
 }
 
@@ -129,24 +135,27 @@ func (c *Connection) Start() {
 
 	go c.StartWriter()
 
-	for {
-		select {
-		case <-c.ExitBuffChan:
-			//得到退出消息，不再阻塞
-			return
-		}
-	}
+	c.TcpServer.CallOnConnStart(c)
+
+	// for {
+	// 	select {
+	// 	case <-c.ExitBuffChan:
+	// 		//得到退出消息，不再阻塞
+	// 		return
+	// 	}
+	// }
 }
 
 //停止连接，结束当前连接状态M
 func (c *Connection) Stop() {
 	//1. 如果当前链接已经关闭
-	if c.isClosed == true {
+	if c.isClosed {
 		return
 	}
 	c.isClosed = true
 
 	//TODO Connection Stop() 如果用户注册了该链接的关闭回调业务，那么在此刻应该显示调用
+	c.TcpServer.CallOnConnStop(c)
 
 	// 关闭socket链接
 	c.Conn.Close()
@@ -154,8 +163,11 @@ func (c *Connection) Stop() {
 	//通知从缓冲队列读数据的业务，该链接已经关闭
 	c.ExitBuffChan <- true
 
+	c.TcpServer.GetConnMgr().Remove(c)
+
 	//关闭该链接全部管道
 	close(c.ExitBuffChan)
+	close(c.msgBuffChan)
 }
 
 //从当前连接获取原始的socket TCPConn
@@ -204,8 +216,32 @@ func (c *Connection) StartWriter() {
 				fmt.Println("Send data error:, ", err, " Conn Writer exit")
 				return
 			}
+		case data, ok := <-c.msgBuffChan:
+			if ok {
+				if _, err := c.Conn.Write(data); err != nil {
+					fmt.Println("send buff data error:,", err, "conn writer exit")
+					return
+				}
+			} else {
+				fmt.Println("msgBuffChan is closed")
+				break
+			}
 		case <-c.ExitBuffChan:
 			return
 		}
 	}
+}
+
+func (c *Connection) SendBuffMsg(msgId uint32, data []byte) error {
+	if c.isClosed {
+		return errors.New("connecion closed when send buff msg")
+	}
+	dp := NewDataPack()
+	msg, err := dp.Pack(NewMsgPackage(msgId, data))
+	if err != nil {
+		fmt.Println("Pack error msg id = ", msgId)
+		return errors.New("Pack error msg ")
+	}
+	c.msgBuffChan <- msg
+	return nil
 }

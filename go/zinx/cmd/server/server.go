@@ -29,7 +29,7 @@ func (pr *PingRouter) Handle(request ziface.IRequest) {
 	// 	fmt.Println("call back ping error", err)
 	// }
 	fmt.Println("recv from client : msgId =", request.GetMsgID(), "msg = ", string(request.GetData()))
-	err := request.GetConnection().SendMsg(0, []byte("ping...ping...ping"))
+	err := request.GetConnection().SendBuffMsg(0, []byte("ping...ping...ping"))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -46,13 +46,30 @@ func (pr *PingRouter) Handle(request ziface.IRequest) {
 func (hz *HelloZinxRouter) Handle(request ziface.IRequest) {
 	fmt.Println("call HelloZinxRouter handle")
 	fmt.Println("recv from client : msgId = ", request.GetMsgID(), ", data=", string(request.GetData()))
-	err := request.GetConnection().SendMsg(1, []byte("Hello Zinx Router v0.6"))
+	err := request.GetConnection().SendBuffMsg(1, []byte("Hello Zinx Router v0.6"))
 	if err != nil {
 		fmt.Println(err)
 	}
 }
+
+func DoConnectionBegin(conn ziface.IConnection) {
+	fmt.Println("DoConnectionBegin is called ... ")
+	err := conn.SendMsg(2, []byte("DoConnection BEGIN..."))
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func DoConnectionLost(conn ziface.IConnection) {
+	fmt.Println("DoConnectionLost is Called...")
+}
+
 func main() {
 	s := znet.NewServer("[zinx V0.1]")
+
+	s.SetOnConnStart(DoConnectionBegin)
+	s.SetOnConnStop(DoConnectionLost)
+
 	s.AddRouter(0, &PingRouter{})
 	s.AddRouter(1, &HelloZinxRouter{})
 	s.Serve()
